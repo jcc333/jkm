@@ -38,9 +38,6 @@ const (
 
 	// Recovering from an error
 	errorMode
-
-	//TODO: Add support for picking the inbox.
-	// Would be very similar to list mode.
 )
 
 // The router model handles top-level events, and determines the member model which will View and Update.
@@ -66,6 +63,7 @@ type model struct {
 
 func New(cfg *configure.Config) (*model, error) {
 	log.Info("build router")
+
 	// Determine initial mode based on configuration completeness
 	initialMode := configureMode
 
@@ -82,7 +80,6 @@ func New(cfg *configure.Config) (*model, error) {
 		isSending: false,
 	}
 
-	// Initialize the appropriate model based on mode
 	if initialMode == configureMode {
 		log.Info("starting in configure mode")
 		m.model = configure.New(cfg)
@@ -163,12 +160,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.ComposeMessage:
 		return m, m.compose()
 	case messages.SendingMessage:
-		// Check if we're already sending to prevent duplicate emails
 		if m.isSending {
 			return m, nil
 		}
 
-		// Set sending flag
 		m.isSending = true
 
 		// Switch to sending mode and start sending the message
@@ -185,13 +180,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case messages.SentMessage:
-		// Handle successful email sending
 		m.isSending = false
 		if m.mode == composeMode {
-			// Just notify the compose view
 			return m, func() tea.Msg { return messages.SentMessage{} }
 		} else {
-			// Go back to list view
 			return m, m.list()
 		}
 	}
@@ -227,10 +219,12 @@ func (m *model) sendMessage(recipient string, subject string, body string) tea.C
 	}
 }
 
+// Render the view - delegates to the current routed model's View method.
 func (m *model) View() string {
 	return m.model.View()
 }
 
+// List the emails in the inbox.
 func (m *model) list() tea.Cmd {
 	if m.mailer == nil {
 		err := m.buildMailer()
@@ -244,24 +238,28 @@ func (m *model) list() tea.Cmd {
 	return m.model.Init()
 }
 
+// Read an email.
 func (m *model) read(header *email.MessageHeader) tea.Cmd {
 	m.mode = readMode
 	m.model = read.New(m.mailer, header)
 	return m.model.Init()
 }
 
+// Recover from an error.
 func (m *model) recover(err error) tea.Cmd {
 	m.mode = errorMode
 	m.model = errorview.New(m.cfg, err)
 	return m.model.Init()
 }
 
+// Compose an email.
 func (m *model) compose() tea.Cmd {
 	m.mode = composeMode
 	m.model = compose.New(m.cfg)
 	return m.model.Init()
 }
 
+// Wait while the email sends.
 func (m *model) sending(recipient, subject, body string) tea.Cmd {
 	m.mode = sendingMode
 	m.model = sending.New(recipient, subject, body)

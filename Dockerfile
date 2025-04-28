@@ -25,11 +25,12 @@ COPY . .
 RUN go build -o /usr/local/bin/jkm ./cmd/jkm/main.go
 
 RUN echo '#!/bin/bash\n\
-clear\n\
-exec /usr/local/bin/jkm' > /home/app/.bashrc && \
+    clear\n\
+    exec /usr/local/bin/jkm' > /home/app/.bashrc && \
     chown app:app /home/app/.bashrc
 
 COPY README.md /home/app/README.md
+COPY .env.biz /home/app/.env
 
 EXPOSE 22
 

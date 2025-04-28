@@ -2,62 +2,42 @@
 
 JKM is a simple TUI email client.
 
-pageSize?
-refreshing emails automatically?
-email logic cleanup :(
+- It tends to use `less`-like keybindings for navigation.
+- It is configurable via environment variables and a `.env` file.
+- It works with IMAP/SMTP servers.
+
+## Configuration
+
+```
+JKM_EMAIL=flast@example.com
+JKM_IMAP_SERVER=imap.fastmail.com
+JKM_IMAP_PORT=993
+JKM_IMAP_PASSWORD=somepassword
+JKM_SMTP_SERVER=smtp.fastmail.com
+JKM_SMTP_PORT=465
+JKM_SMTP_PASSWORD=otherpassword
+JKM_LOGGING=true #logging to jkm.logs.jsonl
+```
+
+## Still to be Done
+
+- Right now this doesn't IDLE or refresh the fetched inbox.
+- Currently we return to the inbox at the first page of results.
+- I ought to build an RPM/Deb/apk/brew package.
+- The router in the app has no "memory" of where the user was in the inbox if they read or compose an email.
 
 // TODO: when we exit another view and return to the listing model, we should
 // restore the previous state of the model, including the current offset and
 // page size.
 
-## TODO
-- Cleanup pass in the code.
-- List view memory in the router (return to previous page of emails)
-- Overview configurable size limit (10K default? 100K default?)
 - Set up a fastmail account for jkm to show it off.
-- Configuration view before the mailer gets initialized.
-- Stand this up on my k8s cluster.
+- Deploy it somewhere
+- Cleanup pass in the code.
+- List view memory in the router (keep track of the last UID scrolled over?)
+- List view refreshes periodically or IDLEs
 - Expose it to the open internet.
+- Finish clean-up pass.
 - Write some unit tests for it to get coverage.
-- Add some logging to a file.
-- Publish a RPM/Deb/apk/brew package.
-- Add a GH build.
-- GH Pages about it.
-
-## Features
-
-- List emails from inbox
-- Read email messages
-- Compose new emails using your system's default editor ($EDITOR)
-- Send emails
-- Configured via environment variables and .env file
-
-## Configuration
-
-JKM is configured using environment variables or a `.env` file in either your home directory or the current directory. The following variables are required:
-
-- `JKM_SMTP_SERVER`: SMTP server for sending emails
-- `JKM_SMTP_PORT`: SMTP port (defaults to 587)
-- `JKM_IMAP_SERVER`: IMAP server for receiving emails
-- `JKM_IMAP_PORT`: IMAP port (defaults to 993)
-- `JKM_EMAIL`: Your email address
-- `JKM_PASSWORD`: Your email password
-
-Additionally, you need to have an editor set up:
-
-- `EDITOR`: Your preferred text editor (e.g., vim, nano, emacs)
-
-## Building
-
-```bash
-go build -o jkm ./cmd/jkm
-```
-
-## Running
-
-```bash
-./jkm
-```
 
 ## Usage
 
@@ -67,6 +47,7 @@ go build -o jkm ./cmd/jkm
 - Press r to refresh the inbox
 - Press ? to toggle help
 - Press Ctrl+C to quit
+
 
 ## Dependencies
 

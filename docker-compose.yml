@@ -5,7 +5,7 @@ services:
       - "9001:9001"
     environment:
       - WETTY_ALLOW_IFRAME=true
-    command: --ssh-host jkm --ssh-port 22 --ssh-user app --port 9001
+    command: --ssh-host jkm --ssh-port 22 --ssh-user app --port 9001 --base /app
     depends_on:
       - jkm
     networks:
@@ -23,5 +23,3 @@ services:
 networks:
   jkm-network:
     driver: bridge
-
-

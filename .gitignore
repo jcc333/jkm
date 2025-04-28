@@ -4,6 +4,7 @@
 
 # Configuration files with sensitive data
 /.env
+/.env.biz
 *.eml
 
 # Dependency directories
@@ -21,3 +22,4 @@
 jkm.logs.txt
 jkm.logs.jsonl
 main
+tosend.md

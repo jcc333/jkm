@@ -32,8 +32,6 @@ const (
 type listingModel struct {
 	messagesList  list.Model
 	receiver      email.Receiver
-	currentOffset int
-	pageSize      int
 	totalMessages int
 	items         []*email.MessageHeader
 }
@@ -53,9 +51,10 @@ func (i emailItem) Description() string {
 }
 
 func (i emailItem) FilterValue() string {
-	return i.header.Subject + " " + i.header.From
+	return i.header.Subject + " " + i.header.From + " " + i.header.Date.Format(time.DateTime)
 }
 
+// Make a new mailer with the given index selected.
 func New(receiver email.Receiver) *listingModel {
 	delegate := list.NewDefaultDelegate()
 	listModel := list.New([]list.Item{}, delegate, 0, 0)
@@ -64,14 +63,10 @@ func New(receiver email.Receiver) *listingModel {
 	listModel.SetShowStatusBar(true)
 	listModel.SetFilteringEnabled(true)
 
-	pageSize := 50
-
 	return &listingModel{
-		messagesList:  listModel,
-		receiver:      receiver,
-		currentOffset: 0,
-		pageSize:      pageSize,
-		items:         make([]*email.MessageHeader, 0),
+		messagesList: listModel,
+		receiver:     receiver,
+		items:        make([]*email.MessageHeader, 0),
 	}
 }
 
