@@ -30,6 +30,7 @@ RUN echo '#!/bin/bash\n\
     chown app:app /home/app/.bashrc
 
 COPY README.md /home/app/README.md
+COPY welcome.md /etc/motd
 COPY .env.biz /home/app/.env
 
 EXPOSE 22
