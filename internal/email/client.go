@@ -27,7 +27,7 @@ type Sender interface {
 
 // A type for receiving emails.
 type Receiver interface {
-	List() ([]MessageHeader, error)
+	List(shouldBustCache bool) ([]MessageHeader, error)
 	Read(id int) (*Message, error)
 	CountMessages() (int, error)
 }

@@ -119,7 +119,7 @@ func (m *model) Disconnect() error {
 // Initialize the router model.
 func (m *model) Init() tea.Cmd {
 	log.Info("init router")
-	return tea.Sequence(commands.RefreshEmails(m.mailer), m.model.Init(), commands.Tick())
+	return tea.Sequence(commands.RefreshEmails(m.mailer, true), m.model.Init(), commands.Tick())
 }
 
 // Handle updates to the model, generally by routing them to the routed model.
@@ -135,18 +135,24 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Check for mode switch messages first
 	switch msg := msg.(type) {
 	case messages.ListMessages:
-		return m, tea.Sequence(m.list(), commands.RefreshEmails(m.mailer))
+		return m, tea.Sequence(m.list(), commands.RefreshEmails(m.mailer, false))
+
 	case messages.ReadEmailMessage:
 		return m, tea.Sequence(m.read(msg.MessageHeader), commands.FetchEmailBody(msg.MessageHeader.ID, m.mailer))
+
 	case messages.Err:
 		return m, m.recover(msg.Error)
+
 	case messages.SendingFailure:
 		m.isSending = false
 		return m, m.recover(msg.Error)
+
 	case messages.ComposeMessage:
 		return m, m.compose()
+
 	case messages.SendEmail:
 		return m, commands.SendingEmail(msg)
+
 	case messages.SendingEmail:
 		if m.isSending {
 			return m, nil
@@ -157,15 +163,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sendingCmd := m.sending(msg.Recipient, msg.Subject, msg.Body)
 		sendCmd := m.sendMessage(msg.Recipient, msg.Subject, msg.Body)
 		return m, tea.Batch(sendingCmd, sendCmd)
+
 	case messages.SentEmail:
 		m.isSending = false
 		if m.mode == composeMode {
 			return m, commands.SentMessage()
 		} else {
-			return m, tea.Batch(m.list(), commands.RefreshEmails(m.mailer))
+			return m, tea.Batch(m.list(), commands.RefreshEmails(m.mailer, true))
 		}
+
 	case messages.Tick:
-		return m, tea.Batch(commands.RefreshEmails(m.mailer), commands.Tick())
+		return m, tea.Batch(commands.RefreshEmails(m.mailer, false), commands.Tick())
 	}
 
 	model, cmd := m.model.Update(msg)
@@ -176,7 +184,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) sendMessage(recipient string, subject string, body string) tea.Cmd {
 	return func() tea.Msg {
-		// Create the email message
 		msg := email.Message{
 			MessageHeader: email.MessageHeader{
 				From:    m.cfg.EmailAddress,

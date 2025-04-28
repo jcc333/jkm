@@ -83,7 +83,7 @@ func SentMessage() tea.Cmd {
 // A tick loop for updating our email listings.
 func Tick() tea.Cmd {
 	log.Info("tick command")
-	return tea.Tick(time.Second*15, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Second*5, func(t time.Time) tea.Msg {
 		log.Info("tick")
 		return messages.Tick(t)
 	})
@@ -115,13 +115,13 @@ func FetchEmailBody(id int, receiver email.Receiver) tea.Cmd {
 }
 
 // RefreshEmails refreshes the list of messages.
-func RefreshEmails(receiver email.Receiver) tea.Cmd {
+func RefreshEmails(receiver email.Receiver, shouldBustCache bool) tea.Cmd {
 	log.Info("refresh email command")
 
 	return func() tea.Msg {
 		log.Info("refresh emails")
 
-		headers, err := receiver.List()
+		headers, err := receiver.List(shouldBustCache)
 		if err != nil {
 			return messages.Err{Error: err}
 		}

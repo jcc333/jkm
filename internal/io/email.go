@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/smtp"
 	"strings"
+	"time"
 
 	"github.com/emersion/go-imap"
 	imapClient "github.com/emersion/go-imap/client"
@@ -39,6 +40,9 @@ type Client struct {
 
 	// Cached read emails.
 	messageInfos map[uint32]*imap.Message
+
+	// Last refreshed cache at.
+	lastRefreshed time.Time
 }
 
 // Disconnect from the IMAP server.
@@ -115,6 +119,7 @@ func (c *Client) Connect() error {
 func (c *Client) FetchMessages() error {
 	var err error
 	defer func() {
+		c.lastRefreshed = time.Now()
 		if err != nil {
 			log.Errorf("Failed to fetch messages: %v", err)
 		}
@@ -177,7 +182,7 @@ func (c *Client) CountMessages() (int, error) {
 // TODO: Implement pagination for large mailboxes.
 // TODO: This does double-duty as a cache-buster/refresh function.
 // Ideally we'd use IDLE instead, but this is adequate for now.
-func (c *Client) List() ([]jkmemail.MessageHeader, error) {
+func (c *Client) List(shouldBustCache bool) ([]jkmemail.MessageHeader, error) {
 	log.Info("io list messages")
 	err := c.Connect()
 	defer func() {
@@ -195,7 +200,7 @@ func (c *Client) List() ([]jkmemail.MessageHeader, error) {
 	if err != nil {
 		return nil, err
 	}
-	if count != len(c.messageInfos) {
+	if count != len(c.messageInfos) || time.Since(c.lastRefreshed) > time.Second*30 || shouldBustCache {
 		err = c.FetchMessages()
 		if err != nil {
 			return nil, err
