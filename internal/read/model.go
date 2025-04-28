@@ -52,17 +52,6 @@ func (m readingModel) Init() tea.Cmd {
 	return nil
 }
 
-// Fetch the complete message
-func (m readingModel) fetchFullMessage(id int) tea.Cmd {
-	return func() tea.Msg {
-		msg, err := m.receiver.Read(id)
-		if err != nil {
-			return messages.Err{Error: err}
-		}
-		return messages.FetchedOne{Message: msg}
-	}
-}
-
 // Render the reading view.
 func (m readingModel) View() string {
 	headerStr := m.headerStatusView()
@@ -105,7 +94,6 @@ func (m readingModel) headerView() string {
 	)
 }
 
-// New compact header view as a status bar
 func (m readingModel) headerStatusView() string {
 	if m.header == nil {
 		return "No message selected"
@@ -119,11 +107,12 @@ func (m readingModel) headerStatusView() string {
 		Width(100).
 		Bold(true)
 
-	// Show a compact header with just subject and from
-	return headerStyle.Render(fmt.Sprintf("From: %s | Subject: %s",
-		m.header.From, m.header.Subject))
+	return headerStyle.Render(fmt.Sprintf("From: %s\nSubject: %s\nReceived: %s",
+		m.header.From, m.header.Subject, m.header.Date.Format(time.DateTime)))
 }
 
+// Handle messages to the reading model.
+// Generally this works like a pager, handles key input.
 func (m readingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -133,7 +122,7 @@ func (m readingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q", "esc":
+		case "ctrl+c", "q":
 			return m, commands.ListView()
 		case "j", "down":
 			m.viewport.ScrollDown(1)

@@ -69,7 +69,7 @@ func (logger *Logger) Close() error {
 }
 
 // Log a message at the specified level with source file and line information
-func (l *Logger) log(level LogLevel, msg string, skip int) error {
+func (l *Logger) log(level LogLevel, msg string) error {
 	if !l.isLogging || l.file == nil {
 		return nil
 	}
@@ -91,27 +91,27 @@ func (l *Logger) log(level LogLevel, msg string, skip int) error {
 
 // Log the given message at info level
 func (l *Logger) Log(msg string) error {
-	return l.log(LevelInfo, msg, 2)
+	return l.log(LevelInfo, msg)
 }
 
 // Debug logs a debug message
 func (l *Logger) Debug(msg string) error {
-	return l.log(LevelDebug, msg, 2)
+	return l.log(LevelDebug, msg)
 }
 
 // Info logs an info message
 func (l *Logger) Info(msg string) error {
-	return l.log(LevelInfo, msg, 2)
+	return l.log(LevelInfo, msg)
 }
 
 // Warn logs a warning message
 func (l *Logger) Warn(msg string) error {
-	return l.log(LevelWarn, msg, 2)
+	return l.log(LevelWarn, msg)
 }
 
 // Error logs an error message
 func (l *Logger) Error(msg string) error {
-	return l.log(LevelError, msg, 2)
+	return l.log(LevelError, msg)
 }
 
 // Info through the singleton.

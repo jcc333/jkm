@@ -71,14 +71,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.Type.String() {
-		case "ctrl+c", "q", "esc":
+		case "ctrl+c", "q":
 			log.Debug("compose: canceling compose and returning to list view")
 			return m, commands.ListView()
 		}
 	}
 
 	switch msg.(type) {
-	case messages.SentMessage:
+	case messages.SentEmail:
 		log.Info("compose: email sent successfully, returning to list view")
 		return m, commands.ListView()
 	}

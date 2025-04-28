@@ -34,7 +34,6 @@ func (m *model) Init() tea.Cmd {
 func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg.(type) {
 	case tea.KeyMsg:
-		// Return to list view on any key press
 		log.Info("key interrupt error model")
 		return m, tea.Batch(
 			func() tea.Msg { return messages.ListMessages{} },

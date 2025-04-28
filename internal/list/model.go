@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jcc333/jkm/internal/email"
+	"github.com/jcc333/jkm/internal/log"
 	"github.com/jcc333/jkm/internal/messages"
 )
 
@@ -29,11 +30,11 @@ const (
 	read
 )
 
+// The model for a list of emails.
 type listingModel struct {
-	messagesList  list.Model
-	receiver      email.Receiver
-	totalMessages int
-	items         []*email.MessageHeader
+	// The underlying list.
+	list list.Model
+	// If the list is currently being updated.
 }
 
 // A list item for the `listingModel`.
@@ -42,20 +43,23 @@ type emailItem struct {
 	header *email.MessageHeader
 }
 
+// A list-item's title.
 func (i emailItem) Title() string {
 	return i.header.Subject
 }
 
+// A list-item's description.
 func (i emailItem) Description() string {
 	return fmt.Sprintf("From: %s | %s", i.header.From, i.header.Date.Format(time.DateTime))
 }
 
+// A list-item's search value.
 func (i emailItem) FilterValue() string {
 	return i.header.Subject + " " + i.header.From + " " + i.header.Date.Format(time.DateTime)
 }
 
 // Make a new mailer with the given index selected.
-func New(receiver email.Receiver) *listingModel {
+func New(items []*email.MessageHeader) *listingModel {
 	delegate := list.NewDefaultDelegate()
 	listModel := list.New([]list.Item{}, delegate, 0, 0)
 	listModel.Title = "JKM Email Client"
@@ -63,41 +67,90 @@ func New(receiver email.Receiver) *listingModel {
 	listModel.SetShowStatusBar(true)
 	listModel.SetFilteringEnabled(true)
 
+	listItems := make([]list.Item, len(items))
+	for i, header := range items {
+		listItems[i] = emailItem{header: header}
+	}
+
+	listModel.SetItems(listItems)
+
 	return &listingModel{
-		messagesList: listModel,
-		receiver:     receiver,
-		items:        make([]*email.MessageHeader, 0),
+		list: listModel,
 	}
 }
 
+// Set up the list model.
 func (m listingModel) Init() tea.Cmd {
-	return tea.Batch(m.fetchMessages)
+	return nil
 }
 
+// List model update method.
 func (m listingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		h, v := 0, 0
-		m.messagesList.SetSize(msg.Width-h, msg.Height-v)
+		m.list.SetSize(msg.Width-h, msg.Height-v)
 		return m, nil
 
-	case messages.FetchedList:
-		// Replace items with the complete list
-		m.items = msg.Items
+	case messages.RefreshedEmails:
+		log.Warnf("Refreshing emails in list with %d messages", len(msg.Items))
+		var selectedHeader *email.MessageHeader
+		idx := m.list.Index()
 
-		// Create list items for the UI
-		listItems := make([]list.Item, len(m.items))
-		for i, header := range m.items {
-			listItems[i] = emailItem{header: header}
+		log.Warnf("idx = %v", idx)
+		if idx >= 0 && idx < len(m.list.Items()) {
+			if item, ok := m.list.SelectedItem().(emailItem); ok {
+				selectedHeader = item.header
+			}
+		}
+		log.Warnf("selected header = %v", selectedHeader)
+
+		items := make([]list.Item, len(msg.Items))
+		for i, header := range msg.Items {
+			items[i] = emailItem{header: header}
+		}
+		log.Warnf("about to set items %d", len(items))
+
+		m.list.SetItems(items)
+		log.Warnf("set items %d", len(items))
+
+		if selectedHeader != nil && len(items) > 0 {
+			log.Warnf("have a selected header with Id %d and %d items", selectedHeader.ID, len(items))
+			isFound := false
+
+			for i, item := range items {
+				if emailItem, ok := item.(emailItem); ok {
+					if emailItem.header.ID == selectedHeader.ID {
+						log.Warnf("selecting item %d with ID %d", i, emailItem.header.ID)
+						m.list.Select(i)
+						isFound = true
+						break
+					}
+				}
+			}
+
+			if !isFound {
+				if idx < len(items) {
+					log.Warnf("falling back to item at same index")
+					m.list.Select(idx)
+				} else if len(items) > 0 {
+					log.Warnf("falling back to last item")
+					m.list.Select(len(items) - 1)
+				}
+			}
+		} else if len(items) > 0 {
+			// Ensure there's always a selection if there are items
+			log.Warnf("falling back to first item")
+			m.list.Select(0)
 		}
 
-		m.messagesList.SetItems(listItems)
+		log.Warnf("returning model")
 		return m, tea.WindowSize()
 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			item, ok := m.messagesList.SelectedItem().(emailItem)
+			item, ok := m.list.SelectedItem().(emailItem)
 			if ok {
 				return m, tea.Batch(
 					func() tea.Msg { return messages.ReadEmailMessage{MessageHeader: item.header} },
@@ -111,40 +164,14 @@ func (m listingModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Batch(
 				func() tea.Msg { return messages.ComposeMessage{} },
 			)
-
-		case "r":
-			m.items = make([]*email.MessageHeader, 0)
-			return m, m.fetchMessages
 		}
 	}
 
 	var cmd tea.Cmd
-	m.messagesList, cmd = m.messagesList.Update(msg)
+	m.list, cmd = m.list.Update(msg)
 	return m, cmd
 }
 
 func (m listingModel) View() string {
-	return m.messagesList.View()
-}
-
-// Fetch email overviews.
-func (m listingModel) fetchMessages() tea.Msg {
-	count, err := m.receiver.CountMessages()
-	if err != nil {
-		return messages.Err{Error: err}
-	}
-	m.totalMessages = count
-
-	headers, err := m.receiver.List()
-	if err != nil {
-		return messages.Err{Error: err}
-	}
-
-	items := make([]*email.MessageHeader, len(headers))
-	for i, header := range headers {
-		headerCopy := header
-		items[i] = &headerCopy
-	}
-
-	return messages.FetchedList{Items: items}
+	return m.list.View()
 }

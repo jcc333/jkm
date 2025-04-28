@@ -61,6 +61,11 @@ func New(cfg *configure.Config) (*Client, error) {
 		log.Errorf("Failed to connect to IMAP server: %v", err)
 		return nil, err
 	}
+	err = c.FetchMessages()
+	if err != nil {
+		log.Errorf("Failed to fetch messages: %v", err)
+		return nil, err
+	}
 	return c, nil
 }
 
@@ -88,6 +93,37 @@ func (c *Client) Connect() error {
 		return err
 	}
 
+	err = c.FetchMessages()
+	if err != nil {
+		log.Errorf("Failed to fetch messages: %v", err)
+		return err
+	}
+
+	// Setup SMTP configuration
+	c.smtpServer = c.cfg.SMTPServer
+	c.smtpPort = c.cfg.SMTPPort
+	c.smtpEmail = c.cfg.EmailAddress
+	c.smtpPassword = c.cfg.SMTPPassword
+
+	// Setup authentication
+	c.smtpAuth = smtp.PlainAuth("", c.smtpEmail, c.smtpPassword, c.smtpServer)
+
+	return nil
+}
+
+// Refresh the cached inbox contents
+func (c *Client) FetchMessages() error {
+	var err error
+	defer func() {
+		if err != nil {
+			log.Errorf("Failed to fetch messages: %v", err)
+		}
+	}()
+	if c.in == nil {
+		err = fmt.Errorf("Fetching before connected to IMAP server")
+		return err
+	}
+
 	mailbox, err := c.in.Select("INBOX", false)
 	if err != nil {
 		return err
@@ -111,28 +147,14 @@ func (c *Client) Connect() error {
 			return err
 		}
 
-		// Sort the UIDs in descending order (newest first)
-		// Some servers already return UIDs in descending order, but we ensure it here
+		// Sort the UIDs in descending order
 		if len(ids) > 1 {
-			// Use descending sort to get newest first
-			// Newer emails generally have higher UIDs
 			for i, j := 0, len(ids)-1; i < j; i, j = i+1, j-1 {
 				ids[i], ids[j] = ids[j], ids[i]
 			}
 		}
 		c.uids = ids
 	}
-
-	c.messageInfos = make(map[uint32]*imap.Message)
-
-	// Setup SMTP configuration
-	c.smtpServer = c.cfg.SMTPServer
-	c.smtpPort = c.cfg.SMTPPort
-	c.smtpEmail = c.cfg.EmailAddress
-	c.smtpPassword = c.cfg.SMTPPassword
-
-	// Setup authentication
-	c.smtpAuth = smtp.PlainAuth("", c.smtpEmail, c.smtpPassword, c.smtpServer)
 
 	return nil
 }
@@ -144,11 +166,19 @@ func (c *Client) CountMessages() (int, error) {
 		log.Errorf("Failed to fetch message count: %v", err)
 		return 0, err
 	}
-	return len(c.uids), nil
+	mailbox, err := c.in.Select("INBOX", false)
+	if err != nil {
+		return 0, err
+	}
+	return int(mailbox.Messages), nil
 }
 
 // Get all messages from the IMAP server.
+// TODO: Implement pagination for large mailboxes.
+// TODO: This does double-duty as a cache-buster/refresh function.
+// Ideally we'd use IDLE instead, but this is adequate for now.
 func (c *Client) List() ([]jkmemail.MessageHeader, error) {
+	log.Info("io list messages")
 	err := c.Connect()
 	defer func() {
 		if err != nil {
@@ -160,41 +190,48 @@ func (c *Client) List() ([]jkmemail.MessageHeader, error) {
 		return nil, err
 	}
 
-	totalMsgs := len(c.uids)
-	if totalMsgs == 0 {
-		return []jkmemail.MessageHeader{}, nil
+	// Refresh the list of UIDs
+	count, err := c.CountMessages()
+	if err != nil {
+		return nil, err
 	}
-
-	// If our cache count is different than the total messages, (re)-fetch all message overviews
-	if len(c.messageInfos) != totalMsgs {
-		// Create a sequence set for all UIDs
-		seqSet := new(imap.SeqSet)
-		for _, uid := range c.uids {
-			seqSet.AddNum(uid)
-		}
-
-		// Fetch all message headers at once
-		// Use UidFetch instead of Fetch to ensure we get the right messages
-		items := []imap.FetchItem{imap.FetchEnvelope, imap.FetchUid, imap.FetchFlags}
-		messages := make(chan *imap.Message, 100) // Use larger buffer for all messages
-		done := make(chan error, 1)
-
-		go func() {
-			done <- c.in.UidFetch(seqSet, items, messages)
-		}()
-
-		// Store all messages in our cache
-		for msg := range messages {
-			c.messageInfos[msg.Uid] = msg
-		}
-
-		if err := <-done; err != nil {
+	if count != len(c.messageInfos) {
+		err = c.FetchMessages()
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	// Now we have all messages in cache, just return the requested slice
-	headers := make([]jkmemail.MessageHeader, 0, totalMsgs)
+	if len(c.uids) == 0 {
+		return []jkmemail.MessageHeader{}, nil
+	}
+
+	seqSet := new(imap.SeqSet)
+	for _, uid := range c.uids {
+		seqSet.AddNum(uid)
+	}
+
+	items := []imap.FetchItem{imap.FetchEnvelope, imap.FetchUid, imap.FetchFlags}
+	messages := make(chan *imap.Message, 100)
+	done := make(chan error, 1)
+
+	go func() {
+		done <- c.in.UidFetch(seqSet, items, messages)
+	}()
+
+	// Clear the cache before populating with fresh data
+	c.messageInfos = make(map[uint32]*imap.Message)
+
+	// Store all messages in our cache
+	for msg := range messages {
+		c.messageInfos[msg.Uid] = msg
+	}
+
+	if err := <-done; err != nil {
+		return nil, err
+	}
+
+	headers := make([]jkmemail.MessageHeader, 0, len(c.uids))
 	for _, uid := range c.uids {
 		msg, ok := c.messageInfos[uid]
 		if !ok || msg == nil || msg.Envelope == nil {

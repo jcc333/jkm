@@ -36,7 +36,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case messages.SentMessage:
+	case messages.SentEmail:
 		// Email sent successfully
 		return m, commands.ListView()
 	case messages.SendingFailure:

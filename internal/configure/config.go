@@ -42,12 +42,15 @@ func Load() (*Config, error) {
 	home, err := os.UserHomeDir()
 	if err == nil {
 		_ = godotenv.Load(filepath.Join(home, ".env"))
-		// An extra logger init in case JKM_LOGGING is set in the .env file
 		isLogging := os.Getenv("JKM_LOGGING")
 		log.Init(isLogging != "false" && isLogging != "")
-
 	}
+	// We have to initialize logging in a few places to make sure we catch all of the avenues for logging config.
+	// It seemed better to do this early-as-possible to get the full set of messages/commands.
 	_ = godotenv.Load(".env")
+	isLogging := os.Getenv("JKM_LOGGING")
+	log.Init(isLogging != "false" && isLogging != "")
+
 	cfg := &Config{
 		IMAPPort: 993,
 		SMTPPort: 587,

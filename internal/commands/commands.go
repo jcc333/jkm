@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/jcc333/jkm/internal/email"
 	"github.com/jcc333/jkm/internal/log"
@@ -47,12 +49,44 @@ func SendEmail(recipient, subject, body string) tea.Cmd {
 
 	return func() tea.Msg {
 		log.Info("send email message")
-		return messages.SendingMessage{
+		return messages.SendingEmail{
 			Recipient: recipient,
 			Subject:   subject,
 			Body:      body,
 		}
 	}
+}
+
+// Set the application to a sending-email spinner mode.
+func SendingEmail(msg messages.SendEmail) tea.Cmd {
+	log.Info("sending email command")
+
+	return func() tea.Msg {
+		log.Info("sending email")
+		return messages.SendingEmail{
+			Recipient: msg.Recipient,
+			Subject:   msg.Subject,
+			Body:      msg.Body,
+		}
+	}
+}
+
+// Handle a sent message.
+func SentMessage() tea.Cmd {
+	log.Info("sent email command")
+	return func() tea.Msg {
+		log.Info("sent email")
+		return messages.SentEmail{}
+	}
+}
+
+// A tick loop for updating our email listings.
+func Tick() tea.Cmd {
+	log.Info("tick command")
+	return tea.Tick(time.Second*15, func(t time.Time) tea.Msg {
+		log.Info("tick")
+		return messages.Tick(t)
+	})
 }
 
 // ShowError displays an error message
@@ -77,5 +111,28 @@ func FetchEmailBody(id int, receiver email.Receiver) tea.Cmd {
 		}
 		log.Info("fetched body message")
 		return messages.FetchedBody{ID: id, Body: body.Body}
+	}
+}
+
+// RefreshEmails refreshes the list of messages.
+func RefreshEmails(receiver email.Receiver) tea.Cmd {
+	log.Info("refresh email command")
+
+	return func() tea.Msg {
+		log.Info("refresh emails")
+
+		headers, err := receiver.List()
+		if err != nil {
+			return messages.Err{Error: err}
+		}
+
+		items := make([]*email.MessageHeader, len(headers))
+		for i, header := range headers {
+			headerCopy := header
+			items[i] = &headerCopy
+		}
+
+		log.Info("refreshed emails")
+		return messages.RefreshedEmails{Items: items}
 	}
 }

@@ -15,7 +15,6 @@ func main() {
 	log.Init(isLogging != "false" && isLogging != "")
 
 	cfg, err := configure.Load()
-
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
 		fmt.Println("\nPlease create a .env file based on the example.env template")

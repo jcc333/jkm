@@ -1,13 +1,15 @@
 package messages
 
 import (
+	"time"
+
 	"github.com/jcc333/jkm/internal/email"
 )
 
 // Our application's custom message types.
 
 // The result of asynchronously fetching a page of email headers.
-type FetchedList struct {
+type RefreshedEmails struct {
 	Items []*email.MessageHeader
 }
 
@@ -39,22 +41,16 @@ type ReadEmailMessage struct {
 }
 
 // Sent when we send a message.
-type SendMessage struct {
+type SendEmail struct {
 	Recipient, Subject, Body string
 }
 
 // Sent when we *have sent* a message.
-type SentMessage struct{}
+type SentEmail struct{}
 
-// LoadMore is sent when the user has scrolled to the bottom of the list
-// and we need to load more messages
-type LoadMore struct {
-	Offset int
-}
-
-// SendingMessage is sent when we are in the process of sending a message
+// SendingEmail is sent when we are in the process of sending a message
 // This triggers showing a spinner overlay
-type SendingMessage struct {
+type SendingEmail struct {
 	Recipient, Subject, Body string
 }
 
@@ -62,3 +58,6 @@ type SendingMessage struct {
 type SendingFailure struct {
 	Error error
 }
+
+// A tick event. Used in our case to refresh the email list.
+type Tick time.Time
