@@ -1,0 +1,27 @@
+services:
+  wetty:
+    image: wettyoss/wetty
+    ports:
+      - "9001:9001"
+    environment:
+      - WETTY_ALLOW_IFRAME=true
+    command: --ssh-host jkm --ssh-port 22 --ssh-user app --port 9001
+    depends_on:
+      - jkm
+    networks:
+      - jkm-network
+
+  jkm:
+    build: .
+    image: jkm
+    stdin_open: true
+    networks:
+      - jkm-network
+    environment:
+      - TERM=xterm-256color
+
+networks:
+  jkm-network:
+    driver: bridge
+
+
