@@ -108,8 +108,6 @@ func (c *Client) Connect() error {
 	c.smtpPort = c.cfg.SMTPPort
 	c.smtpEmail = c.cfg.EmailAddress
 	c.smtpPassword = c.cfg.SMTPPassword
-
-	// Setup authentication
 	c.smtpAuth = smtp.PlainAuth("", c.smtpEmail, c.smtpPassword, c.smtpServer)
 
 	return nil
@@ -161,6 +159,31 @@ func (c *Client) FetchMessages() error {
 		c.uids = ids
 	}
 
+	seqSet := new(imap.SeqSet)
+	for _, uid := range c.uids {
+		seqSet.AddNum(uid)
+	}
+
+	items := []imap.FetchItem{imap.FetchEnvelope, imap.FetchUid, imap.FetchFlags}
+	messages := make(chan *imap.Message, 100)
+	done := make(chan error, 1)
+
+	go func() {
+		done <- c.in.UidFetch(seqSet, items, messages)
+	}()
+
+	// Clear the cache before populating with fresh data
+	c.messageInfos = make(map[uint32]*imap.Message)
+
+	// Store all messages in our cache
+	for msg := range messages {
+		c.messageInfos[msg.Uid] = msg
+	}
+
+	if err := <-done; err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -209,31 +232,6 @@ func (c *Client) List(shouldBustCache bool) ([]jkmemail.MessageHeader, error) {
 
 	if len(c.uids) == 0 {
 		return []jkmemail.MessageHeader{}, nil
-	}
-
-	seqSet := new(imap.SeqSet)
-	for _, uid := range c.uids {
-		seqSet.AddNum(uid)
-	}
-
-	items := []imap.FetchItem{imap.FetchEnvelope, imap.FetchUid, imap.FetchFlags}
-	messages := make(chan *imap.Message, 100)
-	done := make(chan error, 1)
-
-	go func() {
-		done <- c.in.UidFetch(seqSet, items, messages)
-	}()
-
-	// Clear the cache before populating with fresh data
-	c.messageInfos = make(map[uint32]*imap.Message)
-
-	// Store all messages in our cache
-	for msg := range messages {
-		c.messageInfos[msg.Uid] = msg
-	}
-
-	if err := <-done; err != nil {
-		return nil, err
 	}
 
 	headers := make([]jkmemail.MessageHeader, 0, len(c.uids))
@@ -361,13 +359,7 @@ func (c *Client) Send(msg jkmemail.Message) error {
 	m.Text = []byte(msg.Body)
 
 	addr := fmt.Sprintf("%s:%d", c.smtpServer, c.smtpPort)
-	fmt.Printf("Sending via SMTP: server=%s, port=%d, from=%s\n", c.smtpServer, c.smtpPort, c.smtpEmail)
-
-	// For Gmail, Yahoo, and many other providers, we need to use their SMTP server domains directly
-	// The auth hostname must match the SMTP server name for many providers
 	c.smtpAuth = smtp.PlainAuth("", c.smtpEmail, c.smtpPassword, c.smtpServer)
-
-	// Fixed TLS config with proper hostname verification
 	tlsConfig := &tls.Config{
 		ServerName:         c.smtpServer,
 		InsecureSkipVerify: false,
@@ -389,6 +381,6 @@ func (c *Client) Send(msg jkmemail.Message) error {
 	}
 	fmt.Printf("StartTLS error: %v\n", err)
 
-	// Fallback to unencrypted as last resort
+	// Fallback to unencrypted
 	return m.Send(addr, c.smtpAuth)
 }
