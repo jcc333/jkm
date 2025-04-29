@@ -28,8 +28,6 @@ JKM_LOGGING=true #logging to jkm.logs.jsonl
 - The router in the app has no "memory" of where the user was in the inbox if they read or compose an email.
 - The test coverage here is weak! I depriorized testing in this case because getting the IMAP/SMTP/TUI test coverage seemed like it would be pretty fragile when it came to adding new features and changing the flow, in this kind of short-lived project.
 
-- Deploy it somewhere
-
 ## Usage
 
 - Navigate using arrow keys or hjkl.
