@@ -1,3 +1,29 @@
+# services:
+#   wetty:
+#     image: wettyoss/wetty
+#     ports:
+#       - "9001:9001"
+#     environment:
+#       - WETTY_ALLOW_IFRAME=true
+#     command: --ssh-host jkm --ssh-port 22 --ssh-user app --port 9001 --base / --title "JKM"
+#     depends_on:
+#       - jkm
+#     networks:
+#       - jkm-network
+
+#   jkm:
+#     build: .
+#     image: jkm
+#     stdin_open: true
+#     networks:
+#       - jkm-network
+#     environment:
+#       - TERM=xterm-256color
+
+# networks:
+#   jkm-network:
+#     driver: bridge
+
 services:
   wetty:
     image: wettyoss/wetty
@@ -19,6 +45,20 @@ services:
       - jkm-network
     environment:
       - TERM=xterm-256color
+
+  # Fake SMTP server for email testing
+  fake-smtp:
+    image: maildev/maildev
+    environment:
+      - MAILDEV_WEB_PORT=9002
+      - MAILDEV_SMTP_PORT=465
+    ports:
+      - "465:465" # SMTP port
+      - "9002:9002" # Web UI
+    networks:
+      - jkm-network
+    # Optional command line arguments
+    command: --hide-extensions STARTTLS
 
 networks:
   jkm-network:
