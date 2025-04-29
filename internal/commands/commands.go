@@ -121,6 +121,9 @@ func RefreshEmails(receiver email.Receiver, shouldBustCache bool) tea.Cmd {
 	return func() tea.Msg {
 		log.Info("refresh emails")
 
+		if receiver == nil {
+			return nil
+		}
 		headers, err := receiver.List(shouldBustCache)
 		if err != nil {
 			return messages.Err{Error: err}
