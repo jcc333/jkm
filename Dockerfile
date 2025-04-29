@@ -1,5 +1,8 @@
 # Dockerfile
+#
 FROM golang:1.23-alpine
+
+ARG USER_PASSWORD
 
 # Install SSH server
 RUN apk add --no-cache openssh bash
@@ -16,6 +19,8 @@ RUN echo "PermitRootLogin yes" >> /etc/ssh/sshd_config && \
 
 # Create app directory
 WORKDIR /app
+
+RUN echo "app:${USER_PASSWORD}" | chpasswd
 
 COPY go.mod go.sum ./
 RUN go mod download

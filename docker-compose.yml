@@ -38,7 +38,11 @@ services:
       - jkm-network
 
   jkm:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - USER_PASSWORD=${USER_PASSWORD}
     image: jkm
     stdin_open: true
     networks:
