@@ -37,6 +37,10 @@ JKM_LOGGING=true #logging to jkm.logs.jsonl
 - Press c to compose a new email (in the mailbox view.)
 - Press Ctrl+C, or 'q' to quit from the mailbox view or return to the mailbox from the compose/read views.
 
+### Web Usage
+
+To start up the web server locally, run `docker-compose up -d` and navigate to http://localhost:9001.
+
 ## Data Flow
 
 ```

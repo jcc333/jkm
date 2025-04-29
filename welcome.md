@@ -9,6 +9,7 @@ JKM is a simple TUI email client.
 - It works with IMAP/SMTP servers.
 - It stands for "James's Kool Mailer", probably.
 - To start it, run `jkm` in your terminal.
+- To change the configuration, edit the `.env` file or move it and set environment variables.
 
 ## Usage
 
