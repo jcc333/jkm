@@ -83,7 +83,7 @@ func SentMessage() tea.Cmd {
 // A tick loop for updating our email listings.
 func Tick() tea.Cmd {
 	log.Info("tick command")
-	return tea.Tick(time.Second*5, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Second*3, func(t time.Time) tea.Msg {
 		log.Info("tick")
 		return messages.Tick(t)
 	})

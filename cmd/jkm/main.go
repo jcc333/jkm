@@ -12,7 +12,7 @@ import (
 
 func main() {
 	isLogging := os.Getenv("JKM_LOGGING")
-	log.Init(isLogging != "false" && isLogging != "")
+	log.Init(isLogging != "")
 
 	cfg, err := configure.Load()
 	if err != nil {

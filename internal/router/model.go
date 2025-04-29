@@ -169,7 +169,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == composeMode {
 			return m, commands.SentMessage()
 		} else {
-			return m, tea.Batch(m.list(), commands.RefreshEmails(m.mailer, true))
+			return m, tea.Sequence(m.list(), commands.RefreshEmails(m.mailer, true))
 		}
 
 	case messages.Tick:
